@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>arXiv Fast Paper Reader</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <!-- Marked.js for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- KaTeX for LaTeX rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <h1 id="headerTitle" style="cursor: pointer;">arXiv Fast Paper Reader</h1>
+            <div class="header-actions">
+                <button id="configBtn" class="btn btn-secondary">⚙️ Config</button>
+                <button id="fetchBtn" class="btn btn-primary">🔄 Fetch Now</button>
+                <div class="stats" id="stats"></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Update notification -->
+    <div id="updateNotification" class="update-notification" style="display: none;">
+        <span>🎉 有新的论文更新！</span>
+        <button onclick="refreshPapers()" class="btn-small">刷新查看</button>
+        <button onclick="dismissUpdate()" class="btn-small btn-dismiss">×</button>
+    </div>
+
+    <!-- Search Bar & Controls -->
+    <div class="search-container">
+        <div class="container">
+            <div class="search-bar-wrapper">
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    class="search-input" 
+                    placeholder="搜索论文..."
+                >
+                <select id="sortSelect" class="sort-select">
+                    <option value="relevance">按相关性排序</option>
+                    <option value="latest">按最新排序</option>
+                </select>
+                <button id="clearKeywordBtn" class="btn btn-secondary" style="display: none;">清除筛选</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timeline -->
+    <main class="container">
+        <div id="timeline" class="timeline">
+            <!-- Papers will be loaded here -->
+        </div>
+        
+        <div id="loading" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Loading papers...</p>
+        </div>
+        
+        <div id="loadMore" class="load-more" style="display: none;">
+            <button class="btn btn-secondary">Load More</button>
+        </div>
+        
+        <!-- End marker is dynamically added by JS -->
+    </main>
+
+    <!-- Config Modal -->
+    <div id="configModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Configuration</h2>
+                <button class="close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <h3 style="margin-top: 0;">关键词设置</h3>
+                
+                <div class="form-group">
+                    <label>Filter Keywords (comma separated)</label>
+                    <input type="text" id="filterKeywords" class="input" 
+                           placeholder="machine learning, computer vision, NLP">
+                </div>
+                
+                <div class="form-group">
+                    <label>Negative Keywords (comma separated) - Auto-reject papers containing these</label>
+                    <input type="text" id="negativeKeywords" class="input" 
+                           placeholder="medical, protein, clinical">
+                </div>
+                
+                <h3>问答设置</h3>
+                
+                <div class="form-group">
+                    <label>Preset Questions (one per line)</label>
+                    <textarea id="presetQuestions" class="textarea" rows="8"
+                              placeholder="What is the main contribution?&#10;What are the key innovations?"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>System Prompt</label>
+                    <textarea id="systemPrompt" class="textarea" rows="4"
+                              placeholder="You are a helpful AI assistant..."></textarea>
+                </div>
+                
+                <h3>模型设置</h3>
+                
+                <div class="form-group">
+                    <label>Model</label>
+                    <input type="text" id="model" class="input" 
+                           placeholder="deepseek-chat">
+                </div>
+                
+                <div class="form-group">
+                    <label>Temperature (0-2)</label>
+                    <input type="number" id="temperature" class="input" 
+                           min="0" max="2" step="0.1" placeholder="0.3">
+                </div>
+                
+                <div class="form-group">
+                    <label>Max Tokens (100-8000)</label>
+                    <input type="number" id="maxTokens" class="input" 
+                           min="100" max="8000" step="100" placeholder="2000">
+                </div>
+                
+                <h3>抓取设置</h3>
+                
+                <div class="form-group">
+                    <label>Fetch Interval (seconds, minimum 60)</label>
+                    <input type="number" id="fetchInterval" class="input" 
+                           min="60" step="60" placeholder="300">
+                </div>
+                
+                <div class="form-group">
+                    <label>Max Papers Per Fetch (1-500)</label>
+                    <input type="number" id="maxPapersPerFetch" class="input" 
+                           min="1" max="500" step="10" placeholder="100">
+                </div>
+                
+                <h3>分析设置</h3>
+                
+                <div class="form-group">
+                    <label>Concurrent Papers (1-50)</label>
+                    <input type="number" id="concurrentPapers" class="input" 
+                           min="1" max="50" step="1" placeholder="10">
+                </div>
+                
+                <div class="form-group">
+                    <label>Min Relevance Score for Stage 2 (0-10)</label>
+                    <input type="number" id="minRelevanceScoreForStage2" class="input" 
+                           min="0" max="10" step="0.5" placeholder="6">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="saveConfig" class="btn btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Paper Detail Modal -->
+    <div id="paperModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2 id="paperTitle"></h2>
+                <div class="modal-header-actions">
+                    <button id="shareBtn" class="icon-btn" title="Share">⎘</button>
+                    <button id="fullscreenBtn" class="icon-btn" title="Toggle Fullscreen">⛶</button>
+                    <button class="close" title="Close">&times;</button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div id="paperDetails"></div>
+                
+                <!-- Relevance Editor (only for non-relevant papers) -->
+                <div id="relevanceEditor" class="relevance-editor" style="display: none;">
+                    <h3>🔧 修改相关性</h3>
+                    <p class="relevance-hint">此文章被AI标记为不相关（评分: <span id="currentRelevanceScore">0</span>/10），你可以手动修改为相关并重新评分。</p>
+                    <div class="relevance-controls">
+                        <label for="relevanceScoreInput">新评分 (0-10):</label>
+                        <input 
+                            type="number" 
+                            id="relevanceScoreInput" 
+                            class="relevance-score-input" 
+                            min="0" 
+                            max="10" 
+                            step="0.1" 
+                            value="5"
+                        >
+                        <button onclick="updateRelevance(currentPaperId)" class="btn btn-primary">
+                            ✓ 标记为相关
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="qa-section">
+                    <h3>💬 Questions & Answers</h3>
+                    <div id="qaList"></div>
+                    
+                    <div class="ask-input-container">
+                        <input 
+                            type="text" 
+                            id="askInput" 
+                            class="input" 
+                            placeholder="Ask a question about this paper... (Press Enter)"
+                        >
+                        <div id="askLoading" class="ask-loading" style="display: none;">
+                            <div class="spinner-small"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
+

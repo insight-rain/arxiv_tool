@@ -1,0 +1,25 @@
+# Web framework and server
+fastapi>=0.109.0,<0.122.0
+uvicorn[standard]>=0.27.0,<0.39.0
+python-multipart>=0.0.6
+
+# HTTP client
+httpx>=0.26.0,<0.29.0
+
+# HTML/XML parsing
+beautifulsoup4>=4.12.3
+lxml>=5.1.0
+
+# Data validation
+pydantic>=2.5.3,<3.0.0
+
+# AI API client (DeepSeek compatible)
+# Note: OpenAI SDK v1.x and v2.x both support AsyncOpenAI
+openai>=1.12.0,<3.0.0
+
+# RSS feed parsing
+feedparser>=6.0.11
+
+# Async file I/O
+aiofiles>=23.2.1
+
